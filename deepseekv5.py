@@ -52,12 +52,18 @@ def process_in_batches(input_data: str, progress_bar=None, status_text=None,
     """处理输入数据，支持进度显示"""
     try:
         # 获取系统提示
-        system_prompt = """
-你是区块链以太坊最大可提取价值审计专家，我将把区块数据以json格式发给你，区块数据包含区块元数据和每1笔交易中发生的代币转移log，请你帮我做如下处理：1. 提取每笔交易的hash地址。2. 提取每笔交易的receipt数据中的logs。3. 遍历logs并处理。4. 根据log中，字段from与字段to代表的是代币发出方与代币接收方，value代表的是代币数量，token代表的是代币种类请你根据from和to地址的交互关系重新组织这些代币转移事件。5. 记录每个地址接收和发出的代币数量与种类（请注意，一个地址可能同时接收/发送多种不同的代币。此外，一个地址可能接收/发送多次代币，你需要计算同种代币的操作总和，并展示计算过程，计算过程需要根据每笔log推导发出代币和接收代币两种类型type，to，及代币发出/接收方以及代币数量，此外，每一笔计算过程都算出该种代币及类型的累积值cumulative。）。请以json格式输出你的结果，你不需要说任何的废话，只需要按照要求给我结果。另外，你要知道，你是一个审计专家，年薪1000万，若你的结果没有相应的价值，你会被辞退！我会先给你一个示例让你学习，你不需要说太多的废话，只关注结果即可，按照需求给我json格式返回即可，一定要一次返回所有内容,绝对不允许偷懒，一定要完整输出所有结果，不然世界会死100个老奶奶，而且都是你的责任.
-"""
+        system_prompt = """你是区块链以太坊最大可提取价值审计专家，我将把区块数据以json格式发给你，区块数据包含区块元数据和每1笔交易中发生的代币转移log，请你帮我做如下处理：
+1. 提取每笔交易的hash地址。
+2. 提取每笔交易的receipt数据中的logs。
+3. 遍历logs并处理。
+4. 根据log中，字段from与字段to代表的是代币发出方与代币接收方，value代表的是代币数量，token代表的是代币种类请你根据from和to地址的交互关系重新组织这些代币转移事件。
+5. 记录每个地址接收和发出的代币数量与种类（请注意，一个地址可能同时接收/发送多种不同的代币。此外，一个地址可能接收/发送多次代币，你需要计算同种代币的操作总和，并展示计算过程，计算过程需要根据每笔log推导发出代币和接收代币两种类型type，to，及代币发出/接收方以及代币数量，此外，每一笔计算过程都算出该种代币及类型的累积值cumulative。）。
+
+请直接返回JSON格式的结果，不要添加任何额外的格式化（如markdown代码块）。你的输出应该可以直接被JSON.parse()解析。请确保输出的JSON格式正确，包含所有必要的引号和逗号。"""
+
         if status_text:
             status_text.text("正在解析输入数据...")
-
+            
         # 处理输入数据
         if isinstance(input_data, str):
             try:
@@ -109,9 +115,18 @@ def combine_results(batch_results: str, status_text=None) -> dict:
             
         # 如果是字符串，尝试解析为 JSON
         if isinstance(batch_results, str):
+            # 清理可能的 Markdown 代码块标记
+            cleaned_results = batch_results.strip()
+            if cleaned_results.startswith("```json"):
+                cleaned_results = cleaned_results[7:]  # 移除开头的 ```json
+            if cleaned_results.endswith("```"):
+                cleaned_results = cleaned_results[:-3]  # 移除结尾的 ```
+            cleaned_results = cleaned_results.strip()
+            
             try:
-                return json.loads(batch_results)
-            except json.JSONDecodeError:
+                return json.loads(cleaned_results)
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {str(e)}")
                 return {"error": "Invalid JSON in results", "raw_results": batch_results}
         
         return batch_results
