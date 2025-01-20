@@ -33,6 +33,9 @@ st.markdown("""
     .streamlit-expanderHeader {
         font-size: 1em;
     }
+    div[data-testid="stStatusWidget"] {
+        display: none;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -63,23 +66,45 @@ if submitted:
         st.error("请先输入数据")
     else:
         try:
-            with st.spinner("正在分析数据..."):
-                # 处理数据
-                batch_results = process_in_batches(input_data, batch_size=2, max_tokens=8192)
-                final_result = combine_results(batch_results)
-                
-                # 显示结果
-                with st.expander("查看分析结果", expanded=True):
-                    st.json(final_result)
-                
-                # 提供下载选项
-                st.download_button(
-                    label="下载分析结果",
-                    data=json.dumps(final_result, ensure_ascii=False, indent=2),
-                    file_name="analysis_result.json",
-                    mime="application/json",
-                    help="点击下载 JSON 格式的分析结果"
-                )
+            # 创建进度条和状态文本
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            # 处理数据
+            status_text.text("开始分析数据...")
+            batch_results = process_in_batches(
+                input_data, 
+                progress_bar=progress_bar,
+                status_text=status_text,
+                batch_size=2, 
+                max_tokens=8192
+            )
+            
+            # 合并结果
+            final_result = combine_results(batch_results)
+            
+            # 清理进度显示
+            progress_bar.empty()
+            status_text.empty()
+            
+            # 显示结果
+            with st.expander("查看分析结果", expanded=True):
+                st.json(final_result)
+            
+            # 提供下载选项
+            st.download_button(
+                label="下载分析结果",
+                data=json.dumps(final_result, ensure_ascii=False, indent=2),
+                file_name="analysis_result.json",
+                mime="application/json",
+                help="点击下载 JSON 格式的分析结果"
+            )
         except Exception as e:
+            # 清理进度显示
+            if 'progress_bar' in locals():
+                progress_bar.empty()
+            if 'status_text' in locals():
+                status_text.empty()
+            
             st.error(f"分析过程中出现错误: {str(e)}")
             st.error("请确保输入数据格式正确，并且已正确设置 DeepSeek API 密钥")
