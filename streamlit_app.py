@@ -2,10 +2,17 @@ import streamlit as st
 from deepseekv5 import process_in_batches, combine_results
 import json
 
+# 配置页面
 st.set_page_config(
     page_title="区块链交易分析工具",
+    page_icon="🔍",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': '区块链交易分析工具 v1.0'
+    }
 )
 
 # 设置页面样式
@@ -20,6 +27,12 @@ st.markdown("""
     pre {
         white-space: pre-wrap;
     }
+    .stAlert > div {
+        word-wrap: break-word;
+    }
+    .streamlit-expanderHeader {
+        font-size: 1em;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -30,19 +43,22 @@ try:
     if not st.secrets.get("DEEPSEEK_API_KEY"):
         st.error("请在 Streamlit Cloud 中设置 DEEPSEEK_API_KEY")
         st.stop()
-except:
+except Exception as e:
     st.error("请在 Streamlit Cloud 中设置 DEEPSEEK_API_KEY")
     st.stop()
 
 # 输入区域
-input_data = st.text_area(
-    "请在下面粘贴区块链数据：",
-    height=200,
-    help="将要分析的区块链数据粘贴在这里"
-)
+with st.form("analysis_form"):
+    input_data = st.text_area(
+        "请在下面粘贴区块链数据：",
+        height=200,
+        help="将要分析的区块链数据粘贴在这里",
+        placeholder="在此粘贴 JSON 格式的区块链数据..."
+    )
+    
+    submitted = st.form_submit_button("分析数据", type="primary")
 
-# 分析按钮
-if st.button("分析数据", type="primary"):
+if submitted:
     if not input_data.strip():
         st.error("请先输入数据")
     else:
@@ -53,14 +69,16 @@ if st.button("分析数据", type="primary"):
                 final_result = combine_results(batch_results)
                 
                 # 显示结果
-                st.json(final_result)
+                with st.expander("查看分析结果", expanded=True):
+                    st.json(final_result)
                 
                 # 提供下载选项
                 st.download_button(
                     label="下载分析结果",
                     data=json.dumps(final_result, ensure_ascii=False, indent=2),
                     file_name="analysis_result.json",
-                    mime="application/json"
+                    mime="application/json",
+                    help="点击下载 JSON 格式的分析结果"
                 )
         except Exception as e:
             st.error(f"分析过程中出现错误: {str(e)}")
