@@ -81,7 +81,7 @@ if submitted:
             )
             
             # 合并结果
-            final_result = combine_results(batch_results)
+            final_result = combine_results(batch_results, status_text=status_text)
             
             # 清理进度显示
             progress_bar.empty()
