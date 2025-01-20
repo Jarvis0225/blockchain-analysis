@@ -4,13 +4,24 @@ import traceback
 import os
 import streamlit as st
 
+def get_client():
+    # 优先使用环境变量，如果没有则使用 Streamlit Secrets
+    api_key = os.getenv('DEEPSEEK_API_KEY')
+    if not api_key and hasattr(st, 'secrets'):
+        api_key = st.secrets.get("DEEPSEEK_API_KEY")
+    
+    if not api_key:
+        raise ValueError("DeepSeek API key not found. Please set it in environment variables or Streamlit secrets.")
+    
+    return OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com",
+    )
+
 # 优先使用环境变量，如果没有则使用 Streamlit Secrets
 api_key = os.getenv('DEEPSEEK_API_KEY') or st.secrets["DEEPSEEK_API_KEY"]
 
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://api.deepseek.com",
-)
+client = get_client()
 
 system_prompt = """
 你是区块链以太坊最大可提取价值审计专家，我将把区块数据以json格式发给你，区块数据包含区块元数据和每1笔交易中发生的代币转移log，请你帮我做如下处理：1. 提取每笔交易的hash地址。2. 提取每笔交易的receipt数据中的logs。3. 遍历logs并处理。4. 根据log中，字段from与字段to代表的是代币发出方与代币接收方，value代表的是代币数量，token代表的是代币种类请你根据from和to地址的交互关系重新组织这些代币转移事件。5. 记录每个地址接收和发出的代币数量与种类（请注意，一个地址可能同时接收/发送多种不同的代币。此外，一个地址可能接收/发送多次代币，你需要计算同种代币的操作总和，并展示计算过程，计算过程需要根据每笔log推导发出代币和接收代币两种类型type，to，及代币发出/接收方以及代币数量，此外，每一笔计算过程都算出该种代币及类型的累积值cumulative。）。请以json格式输出你的结果，你不需要说任何的废话，只需要按照要求给我结果。另外，你要知道，你是一个审计专家，年薪1000万，若你的结果没有相应的价值，你会被辞退！我会先给你一个示例让你学习，你不需要说太多的废话，只关注结果即可，按照需求给我json格式返回即可，一定要一次返回所有内容,绝对不允许偷懒，一定要完整输出所有结果，不然世界会死100个老奶奶，而且都是你的责任。

@@ -25,6 +25,15 @@ st.markdown("""
 
 st.title("区块链交易分析工具")
 
+# 检查是否有API密钥
+try:
+    if not st.secrets.get("DEEPSEEK_API_KEY"):
+        st.error("请在 Streamlit Cloud 中设置 DEEPSEEK_API_KEY")
+        st.stop()
+except:
+    st.error("请在 Streamlit Cloud 中设置 DEEPSEEK_API_KEY")
+    st.stop()
+
 # 输入区域
 input_data = st.text_area(
     "请在下面粘贴区块链数据：",
@@ -55,3 +64,4 @@ if st.button("分析数据", type="primary"):
                 )
         except Exception as e:
             st.error(f"分析过程中出现错误: {str(e)}")
+            st.error("请确保输入数据格式正确，并且已正确设置 DeepSeek API 密钥")
